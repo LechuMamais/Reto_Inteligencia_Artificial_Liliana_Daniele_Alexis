@@ -2,6 +2,12 @@
 .DS_Store
 **/.DS_Store
 
+# Tensores grandes (>100MB, rechazados por GitHub)
+Metricas/
+*.npy
+*.h5
+*.keras
+
 # Datos de Audio
 data/
 pip install librosa pandas numpy scikit-learn matplotlib
