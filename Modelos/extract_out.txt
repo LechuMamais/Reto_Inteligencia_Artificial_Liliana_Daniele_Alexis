@@ -1,0 +1,406 @@
+﻿Total cells: 24
+
+=== Cell 0 (markdown) ===
+# ­ƒº¼ Modelo3_V1_Daniele ÔÇö Feature Importance + Selecci├│n de Variables (PASO 3b)
+### Reto de Inteligencia Artificial ÔÇö Detecci├│n de Audio Spoofing
+**Dataset:** ASVspoof2019 ÔÇö Logical Access (LA) ÔÇö Conjunto de Entrenamiento  
+**Autor:** Daniele  
+**Versi├│n:** V1  
+
+---
+## Objetivo de este Notebook
+
+Este notebook es la **segunda parte del Paso 3** y el paso final antes de la Prueba de Fuego (Paso 4). Su misi├│n es:
+
+1. Extraer el **Feature Importance** del mejor modelo optimizado del Modelo2.
+2. Calcular la importancia por **tres m├®todos complementarios**: RF Impurity, XGB Gain y Permutation Importance.
+3. Construir un **ranking consolidado** de features.
+4. Probar si podemos reducir las 34 features sin sacrificar rendimiento.
+5. Determinar el **conjunto m├¡nimo de features** que mantiene ÔëÑ 98% 
+
+=== Cell 1 (markdown) ===
+---
+## ­ƒôØ PARA TU BLOC DE NOTAS ÔÇö JUSTIFICACI├ôN GLOBAL DEL PASO 3b
+
+**┬┐Por qu├® analizamos Feature Importance DESPU├ëS de optimizar los hiperpar├ímetros?**  
+Si analiz├íramos el Feature Importance con el modelo baseline (sin optimizar), la importancia de cada feature podr├¡a estar sesgada por el overfitting. Con el modelo ya regularizado y con el N ├│ptimo, la importancia refleja de forma m├ís fiel qu├® features son genuinamente discriminativas.
+
+**┬┐Por qu├® usamos 3 m├®todos de importancia distintos?**  
+Cada m├®todo tiene sesgos diferentes:
+- **RF Impurity (MDI):** R├ípido pero favorece features con muchos valores ├║nicos. Puede sobreestimar features continuas.
+- **XGB Gain:** Basado en la ganancia de informaci├│n en splits. M├ís robusto que MDI para features correlacionadas.
+- **Permutation Importance:
+
+=== Cell 3 (code) ===
+# ============================================================
+#  BLOQUE 2 ÔÇö CONFIGURACI├ôN DEL N ├ôPTIMO (desde Modelo2)
+# ============================================================
+
+# ÔÜÖ´©Å  AJUSTA ESTE VALOR con el N_GLOBAL_OPT que obtuvo el Modelo2
+# Despu├®s de ejecutar el Modelo2, copia aqu├¡ el valor de N_GLOBAL_OPT.
+# Por defecto se usa 3200 como estimaci├│n conservadora.
+# Si la Learning Curve del Modelo2 mostr├│ plateau antes, reduce este n├║mero.
+
+N_OPTIMAL_FROM_M2 = 3200  # <-- CAMBIAR seg├║n resultado del Modelo2
+
+print(f'N ├│ptimo configurado (del Modelo2): {N_OPTIMAL_FROM_M2:,} muestras')
+print('ÔÜá´©Å  Si no ejecutaste el Modelo2, revisa el plateau de la Learning Curve y ajusta.')
+OUTPUT: N ├│ptimo configurado (del Modelo2): 3,200 muestras
+ÔÜá´©Å  Si no ejecutaste el Modelo2, revisa el plateau de la Learning Curve y ajusta.
+
+
+=== Cell 5 (code) ===
+# ============================================================
+#  BLOQUE 3 ÔÇö PIPELINE DE DATOS (ID├ëNTICO AL MODELO1/2)
+# ============================================================
+df_full     = pd.read_csv(DATA_PATH)
+df_bonafide = df_full[df_full['label'] == 'bonafide'].copy()
+df_spoof    = df_full[df_full['label'] == 'spoof'].copy()
+
+df_bon_sample = df_bonafide.sample(n=min(len(df_bonafide), N_PER_CLASS), random_state=RANDOM_STATE)
+
+attack_counts = df_spoof['attack_id'].value_counts()
+proportions   = attack_counts / attack_counts.sum()
+n_per_attack  = (proportions * N_PER_CLASS).astype(int)
+deficit       = N_PER_CLASS - n_per_attack.sum()
+for atk in n_per_attack.nlargest(abs(deficit)).index:
+    n_per_attack[atk] += int(np.sign(deficit))
+
+spoof_samples = []
+for attack_id, n in n_per_att
+OUTPUT: Pipeline de datos preparado.
+  Train completo  : 4,000 registros
+  Train ├│ptimo (N): 3,200 registros
+  Test  (SELLADO) : 1,000 registros
+  Features totales: 34
+
+
+=== Cell 12 (code) ===
+# ============================================================
+#  BLOQUE 9 ÔÇö VISUALIZACI├ôN: RANKING CONSOLIDADO (HEATMAP)
+# ============================================================
+fig, ax = plt.subplots(figsize=(14, 9))
+
+cols_to_show = ['RF_Impurity', 'Permutation', 'Consolidated']
+if fi_xgb is not None:
+    cols_to_show = ['RF_Impurity', 'XGB_Gain', 'Permutation', 'Consolidated']
+
+df_heat = df_fi[cols_to_show].apply(
+    lambda col: (col - col.min()) / (col.max() - col.min()) if col.max() != col.min() else col
+)
+
+sns.heatmap(
+    df_heat,
+    ax=ax, cmap='YlOrRd', annot=True, fmt='.2f',
+    linewidths=0.5, linecolor='white',
+    cbar_kws={'label': 'Importancia normalizada [0-1]'}
+)
+ax.set_title('Ranking Consolidado de Features ÔÇö Importancia Normalizada por M├®todo',
+             fonts
+OUTPUT: ­ƒôè Gr├ífico guardado: modelo3_feature_heatmap.png
+
+
+=== Cell 14 (code) ===
+# ============================================================
+#  BLOQUE 10 ÔÇö BARRIDO DE SUBCONJUNTOS DE FEATURES
+# ============================================================
+cv_feat = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+
+FEATURE_SUBSETS = [10, 15, 20, 25, 30, len(FEATURE_COLS)]
+
+# Ranking de features por importancia consolidada
+ranked_features = fi_consolidated.index.tolist()
+
+feat_sweep_results = {'n_features': [], 'f1_mean': [], 'f1_std': [],
+                      'auc_mean': [], 'gap_mean': []}
+
+print('Barrido de subconjuntos de features (Random Forest optimizado)...')
+print(f'  {"N features":<12} {"Val F1 (╬╝┬▒¤â)":<20} {"Val AUC":>10} {"GAP":>8}')
+print('  ' + '-' * 52)
+
+for n_feat in FEATURE_SUBSETS:
+    top_features = ranked_features[:n_feat]
+ 
+OUTPUT: Barrido de subconjuntos de features (Random Forest optimizado)...
+  N features   Val F1 (╬╝┬▒¤â)            Val AUC      GAP
+  ----------------------------------------------------
+  10           0.8798 ┬▒ 0.0086        0.9483  +0.1075
+  15           0.9012 ┬▒ 0.0071        0.9655  +0.0930
+  20           0.9111 ┬▒ 0.0061        0.9716  +0.0838
+  25           0.9165 ┬▒ 0.0069        0.9743  +0.0798
+  30           0.9155 ┬▒ 0.0086        0.9741  +0.0809
+  34           0.9165 ┬▒ 0.0084        0.9743  +0.0802 ÔåÉ TODAS
+
+Ô£à Barrido de features completado.
+
+
+=== Cell 15 (code) ===
+# ============================================================
+#  BLOQUE 11 ÔÇö VISUALIZACI├ôN: F1 vs. N_FEATURES
+# ============================================================
+fig, ax = plt.subplots(figsize=(10, 5))
+
+ns     = feat_sweep_results['n_features']
+f1s    = np.array(feat_sweep_results['f1_mean'])
+f1_std = np.array(feat_sweep_results['f1_std'])
+
+f1_max_feat = f1s.max()
+thr_98      = 0.98 * f1_max_feat
+idx_opt_feat = np.argmax(f1s >= thr_98)
+N_FEATS_OPT  = ns[idx_opt_feat]
+
+ax.plot(ns, f1s, 'o-', color='#3498db', lw=2.5, markersize=8, label='Val F1 (╬╝)')
+ax.fill_between(ns, f1s - f1_std, f1s + f1_std, alpha=0.15, color='#3498db')
+ax.axhline(thr_98, color='#f39c12', ls=':', lw=1.5, label=f'98% m├íx ({thr_98:.3f})')
+ax.axvline(N_FEATS_OPT, color='#9b59b6', ls='--', lw=2,
+           labe
+OUTPUT: ­ƒôè Gr├ífico guardado: modelo3_feature_sweep.png
+   ÔåÆ N features ├│ptimo: 15 (ÔëÑ 98% del F1 m├íximo)
+
+
+=== Cell 16 (code) ===
+# ============================================================
+#  BLOQUE 12 ÔÇö LISTA FINAL DE FEATURES SELECCIONADAS
+# ============================================================
+
+FINAL_FEATURES = ranked_features[:N_FEATS_OPT]
+
+print('=' * 65)
+print(f'FEATURES SELECCIONADAS PARA EL MODELO FINAL ({N_FEATS_OPT} de {len(FEATURE_COLS)})')
+print('=' * 65)
+
+# Clasificar por grupos ac├║sticos
+grupos = {
+    'MFCCs (media)': [f for f in FINAL_FEATURES if 'mfcc' in f and 'mean' in f],
+    'MFCCs (desv. std)': [f for f in FINAL_FEATURES if 'mfcc' in f and 'std' in f],
+    'Espectral': [f for f in FINAL_FEATURES if 'spectral' in f or 'rolloff' in f],
+    'Temporales': [f for f in FINAL_FEATURES if f in ['zcr_mean', 'tempo_bpm', 'rmse_mean',
+                                                        'sign
+OUTPUT: =================================================================
+FEATURES SELECCIONADAS PARA EL MODELO FINAL (15 de 34)
+=================================================================
+
+  MFCCs (media) (7):
+    - mfcc_6_mean                    (importancia consolidada: 0.6468)
+    - mfcc_9_mean                    (importancia consolidada: 0.4216)
+    - mfcc_8_mean                    (importancia consolidada: 0.3139)
+    - mfcc_7_mean                    (importancia consolidada: 0.2648)
+    - mfcc_2_mean                    (importancia consolidada: 0.1799)
+    - mfcc_11_mean                   (importancia consolidada: 0.1519)
+    - mfcc_5_mean                    (importancia consolidada: 0.1402)
+
+  MFCCs (desv. std) (5):
+    - mfcc_4_std                     (importancia consolidada: 1.0000)
+    - mfcc_10_std                    (importancia consolidada: 0.5141)
+    - mfcc_8_std                     (importancia consolidada: 0.4904)
+    - mfcc_9_std                     (importancia conso
+
+=== Cell 17 (markdown) ===
+---
+## SECCI├ôN 4 ÔÇö Modelo Final ├ôptimo
+
+Entrenamos el modelo final con: **N ├│ptimo** + **features ├│ptimas** + **hiperpar├ímetros optimizados**.
+
+### ­ƒôØ PARA TU BLOC DE NOTAS
+
+**┬┐Por qu├® el modelo final usa todos los datos de Train y no el N ├│ptimo?**  
+El N ├│ptimo se us├│ para la **b├║squeda de hiperpar├ímetros** y la selecci├│n de features, donde necesit├íbamos rapidez iterativa. Ahora que los hiperpar├ímetros y features est├ín fijados, entrenar con todo el train disponible (con las features seleccionadas) maximiza la cantidad de informaci├│n sin riesgo de sobreajuste adicional, ya que la regularizaci├│n ya est├í ajustada.
+
+Esta es una pr├íctica est├índar: b├║squeda eficiente con N ├│ptimo, entrenamiento final con el m├íximo de datos disponibles.
+
+=== Cell 18 (code) ===
+# ============================================================
+#  BLOQUE 13 ÔÇö ENTRENAMIENTO DEL MODELO FINAL
+# ============================================================
+
+# Validaci├│n cruzada del modelo final (con features ├│ptimas, sobre TODO el train)
+X_train_final = X_train_all[FINAL_FEATURES]
+X_test_final  = X_test[FINAL_FEATURES]
+
+final_model = RandomForestClassifier(
+    n_estimators=200, max_depth=15, min_samples_leaf=2,
+    n_jobs=-1, random_state=RANDOM_STATE
+)
+
+cv_final = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+cv_final_out = cross_validate(
+    final_model, X_train_final, y_train_enc,
+    cv=cv_final,
+    scoring={'f1': 'f1', 'roc_auc': 'roc_auc', 'recall': 'recall', 'precision': 'precision'},
+    return_train_score=True, n_jobs=-1
+)
+
+print('M
+OUTPUT: MODELO FINAL ÔÇö Validaci├│n Cruzada (features ├│ptimas, train completo)
+============================================================
+  F1          : Train=0.9928 | Val=0.9042 | GAP=+0.0886 ÔÜá´©Å
+  Roc_auc     : Train=0.9997 | Val=0.9679 | GAP=+0.0317 Ô£à
+  Recall      : Train=0.9868 | Val=0.8880 | GAP=+0.0988 ÔÜá´©Å
+  Precision   : Train=0.9990 | Val=0.9212 | GAP=+0.0778 ÔÜá´©Å
+
+MODELO FINAL ÔÇö Evaluaci├│n en Test Set (SELLADO)
+============================================================
+  F1          : 0.9072
+  Roc_auc     : 0.9670
+  Recall      : 0.8900
+  Precision   : 0.9252
+  Accuracy    : 0.9090
+
+  Features usadas : 15 de 34
+              precision    recall  f1-score   support
+
+    bonafide       0.89      0.93      0.91       500
+       spoof       0.93      0.89      0.91       500
+
+    accuracy                           0.91      1000
+   macro avg       0.91      0.91      0.91      1000
+weighted avg       0.91      0.91      0.91      1000
+
+
+
+=== Cell 19 (code) ===
+# ============================================================
+#  BLOQUE 14 ÔÇö MATRIZ DE CONFUSI├ôN DEL MODELO FINAL
+# ============================================================
+fig, ax = plt.subplots(figsize=(6, 5))
+
+cm = confusion_matrix(y_test_enc, y_pred_final)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                               display_labels=['bonafide', 'spoof'])
+disp.plot(ax=ax, colorbar=False, cmap='Blues')
+ax.set_title(
+    f'Modelo Final ÔÇö Test Set\n'
+    f'F1={final_test_metrics["f1"]:.4f} | AUC={final_test_metrics["roc_auc"]:.4f} | '
+    f'Recall={final_test_metrics["recall"]:.4f}'
+)
+
+plt.tight_layout()
+plt.savefig('modelo3_confusion_final.png', bbox_inches='tight', dpi=120)
+plt.show()
+print('­ƒôè Gr├ífico guardado: modelo3_confusion_final.png')
+OUTPUT: ­ƒôè Gr├ífico guardado: modelo3_confusion_final.png
+
+
+=== Cell 20 (markdown) ===
+---
+## SECCI├ôN 5 ÔÇö Cuadro Comparativo Final: M1 ÔåÆ M2 ÔåÆ M3
+
+=== Cell 21 (code) ===
+# ============================================================
+#  BLOQUE 15 ÔÇö EVOLUCI├ôN M1 ÔåÆ M2 ÔåÆ M3
+# ============================================================
+
+# Recalcular M1 baseline con train completo y todas las features
+m1_model = RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=RANDOM_STATE)
+m1_cv    = cross_validate(
+    m1_model, X_train_all, y_train_enc,
+    cv=StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE),
+    scoring={'f1': 'f1', 'roc_auc': 'roc_auc'},
+    return_train_score=True, n_jobs=-1
+)
+m1_model.fit(X_train_all, y_train_enc)
+m1_pred   = m1_model.predict(X_test)
+m1_proba  = m1_model.predict_proba(X_test)[:, 1]
+m1_f1_val = m1_cv['test_f1'].mean()
+m1_f1_tst = f1_score(y_test_enc, m1_pred)
+m1_auc    = roc_auc_score(y_test_enc, 
+OUTPUT: ==========================================================================================
+EVOLUCI├ôN COMPLETA: MODELO1 (Baseline) ÔåÆ MODELO2 (N+HP opt.) ÔåÆ MODELO3 (Features opt.)
+==========================================================================================
+  Modelo      N Train  N Feats  CV Val F1    Test F1   Test AUC      GAP
+  ----------------------------------------------------------------------
+  Modelo 1      4,000       34     0.9232     0.9313     0.9785  +0.0768
+  Modelo 2      3,200       34     0.9138     0.9283     0.9781  +0.0832
+  Modelo 3      4,000       15     0.9042     0.9072     0.9670  +0.0886
+
+­ƒÅå MEJOR MODELO PARA EL PASO 4: Modelo 1
+   CV Val F1 = 0.9232 | Test F1 = 0.9313 | Test AUC = 0.9785
+   N muestras = 4,000 | N features = 34
+
+ÔåÆ Este modelo (con sus features seleccionadas) pasa al Modelo_Final_Unseen_Daniele.ipynb
+  donde se entrenar├í con A01-A04 y se testear├í con A05-A06 (Prueba de Fuego).
+
+
+=== Cell 22 (code) ===
+# ============================================================
+#  BLOQUE 16 ÔÇö GUARDAR CONFIGURACI├ôN PARA EL PASO 4
+# ============================================================
+import json, os
+
+config_paso4 = {
+    'best_model_name'    : 'RandomForest',
+    'best_model_params'  : {
+        'n_estimators'    : 200,
+        'max_depth'       : 15,
+        'min_samples_leaf': 2,
+        'n_jobs'          : -1,
+        'random_state'    : RANDOM_STATE
+    },
+    'final_features'     : FINAL_FEATURES,
+    'n_features_selected': N_FEATS_OPT,
+    'n_features_total'   : len(FEATURE_COLS),
+    'n_optimal_train'    : N_OPTIMAL_FROM_M2,
+    'cv_val_f1'          : round(m3_f1_val, 4),
+    'test_f1'            : round(m3_f1_tst, 4),
+    'test_auc'           : round(m3_auc, 4),
+    'discarded_features'
+OUTPUT: Ô£à Configuraci├│n guardada en: c:\Users\PC\OneDrive\Desktop\GIT_DANIELE\Reto_Inteligencia_Artificial_Liliana_Daniele_Alexis\Modelos\config_modelo_final_paso4.json
+
+Contenido del archivo de configuraci├│n:
+{
+  "best_model_name": "RandomForest",
+  "best_model_params": {
+    "n_estimators": 200,
+    "max_depth": 15,
+    "min_samples_leaf": 2,
+    "n_jobs": -1,
+    "random_state": 42
+  },
+  "final_features": [
+    "mfcc_4_std",
+    "mfcc_6_mean",
+    "mfcc_10_std",
+    "mfcc_8_std",
+    "mfcc_9_mean",
+    "mfcc_8_mean",
+    "mfcc_9_std",
+    "mfcc_7_mean",
+    "mfcc_1_std",
+    "spectral_bandwidth_mean",
+    "mfcc_2_mean",
+    "signal_mean",
+    "mfcc_11_mean",
+    "mfcc_5_mean",
+    "spectral_rolloff_mean"
+  ],
+  "n_features_selected": 15,
+  "n_features_total": 34,
+  "n_optimal_train": 3200,
+  "cv_val_f1": 0.9042,
+  "test_f1": 0.9072,
+  "test_auc": 0.967,
+  "discarded_features": [
+    "signal_std",
+    "rmse_mean",
+    "zcr_mean",
+    "tempo_bpm",
+    "mfcc_1_mean",
+    "mfcc_2_std",
+    "mf
+
+=== Cell 23 (markdown) ===
+---
+## ­ƒôï BLOC DE NOTAS FINAL ÔÇö RESUMEN DEL PASO 3b (Modelo3)
+
+### Decisiones tomadas:
+
+| Decisi├│n | Justificaci├│n |
+|----------|---------------|
+| 3 m├®todos de Feature Importance | MDI tiene sesgo; Permutation es honesto; XGB Gain es robusto. El promedio neutraliza los sesgos individuales. |
+| Barrido desde 10 hasta 34 features | Cubre el rango completo de posibles reducciones sin saltos ciegos |
+| Criterio 98% para selecci├│n | Mismo criterio que el N ├│ptimo: m├íxima eficiencia sin sacrificar rendimiento significativo |
+| Entrenamiento final con train completo | Con hiperpar├ímetros y features fijados, m├ís datos = mejor modelo |
+| JSON de configuraci├│n para Paso 4 | Garantiza reproducibilidad y facilita la carga en el notebook del Paso 4 |
+
+### Lo que llevamos al Paso 4 (Prueba de Fuego):
+1.
