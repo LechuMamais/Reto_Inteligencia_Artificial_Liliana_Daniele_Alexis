@@ -1,10 +1,6 @@
 # Detección de Audio Generado por IA (Deepfake Audio) - Reto Telefónica
 
-<<<<<<< HEAD
-Este proyecto se desarrolla en el marco del **Máster en Data Analytics for Business** del a **Universidad Pompeu Fabra** como respuesta al reto planteado por **Telefónica**. El objetivo principal es diseñar, entrenar y validar un modelo de aprendizaje capaz de distinguir entre grabaciones de audio reales y aquellas generadas mediante técnicas de Inteligencia Artificial (Deepfakes). Nos centraremos en buscar un modelo con buenos resultados y velocidad de ejecución.
-=======
 Este proyecto se desarrolla en el marco del **Máster en Data Analytics for Business (UPF BSM)** como respuesta al reto planteado por **Telefónica**. El objetivo es diseñar, entrenar y validar modelos capaces de distinguir entre grabaciones de voz humana real y voz generada mediante Inteligencia Artificial (deepfake audio).
->>>>>>> d371ecffc325d0d7243eca2f5e6daa5806b6d026
 
 ## 1. Contexto del Proyecto
 
@@ -16,22 +12,11 @@ El reto consiste en una **clasificación binaria**:
 - **Clase 0 - Bonafide:** audios capturados de fuentes humanas naturales.
 - **Clase 1 - Spoof:** audios generados mediante arquitecturas de síntesis de voz (TTS / Voice Conversion).
 
-<<<<<<< HEAD
-## 3. Estructura del Repositorio
-
-- `data/`: Directorio (ignorado por git) destinado a los archivos de audio crudos y procesados.
-- `Obtencion_Metricas`: Directorio con ETLs y .csv
-- `Modelos/`: Notebooks Python con los modelos entrenados.
-- `Metricas` : Resultados de ETL V2
-- `test_voces` : Audios de voces reales a teastear
-- `Conclusiones` : Conclusiones y demo
-=======
 ### Metodología de Análisis
 
 El proyecto se divide en dos enfoques complementarios implementados en paralelo:
 
 - Parte 1: ETL clásico + Machine Learning: extracción de métricas acústicas estadísticas (MFCCs, ZCR, RMSE, espectro) para generar un dataset tabular y entrenar modelos Random Forest, XGBoost y Red Neuronal MLP con validaciones progresivamente más exigentes.
->>>>>>> d371ecffc325d0d7243eca2f5e6daa5806b6d026
 
 - Parte 2: Deep Learning con CNN: transformación de los archivos de audio en espectrogramas mediante STFT y entrenamiento de Redes Neuronales Convolucionales (CNN) que tratan cada espectrograma como una imagen acústica.
 
@@ -42,17 +27,6 @@ F1-Score y matriz de confusión (Recall y Precision) como métricas principales.
 
 - ASVspoof 2019 - Logical Access (LA)
 
-<<<<<<< HEAD
-3. Instalar dependencias:
-
-## 5. Integrantes del Equipo
-
-Este proyecto ha sido realizado por:
-
-- **Daniele Giovannini**
-- **Liliana Espinoza Proa**
-- **Alexis Mamais Mazzucco**
-=======
 | Partición | Audios | Descripción |
 |-----------|--------|-------------|
 | Train | 25.380 | Ataques A01–A06 + bonafide |
@@ -68,32 +42,62 @@ Este proyecto ha sido realizado por:
 ## 4. Estructura del Repositorio
 
 ```
-├── Obtencion_Metricas/            # ETL Parte 1: extracción de features estadísticas
-│   ├── ETL_V1.ipynb               # ETL tabular (MFCCs, ZCR, RMSE...) — dataset train
-│   └── ETL_V1_test.ipynb          # ETL tabular — dataset eval
-├── Metricas/                      # ETL Parte 2: tensores STFT para CNN
-│   ├── ETL_V2.1_train/            # Tensores ASVspoof train (A01-A06)
-│   ├── ETL_V2.1_eval/             # Tensores ASVspoof eval (A07-A19)
-│   └── ETL_LatinAmerica/          # Tensores dataset Latinoamérica
+├── Obtencion_Metricas/                         # ETL Parte 1: extracción de features estadísticas
+│   ├── ETL_V1.ipynb                            # ETL tabular (MFCCs, ZCR, RMSE...) - dataset train
+│   ├── ETL_V1_test.ipynb                       # ETL tabular - dataset eval
+│   ├── ETL_V2.ipynb                            # ETL Parte 2: generación de espectrogramas STFT
+│   ├── train_EDA_Daniele.csv                   # Dataset train balanceado (features acústicas)
+│   ├── test_EDA_Daniele.csv                    # Dataset test (features acústicas)
+│   ├── dataset_balanceado_5000_EDA_Daniele.csv # Muestra balanceada 50/50 de 5.000 audios
+│   ├── dataset_caracteristicas_eval.csv        # Features del conjunto eval (A07-A19)
+│   └── feature_ranking_cohen_d_Daniele.csv     # Ranking de features por d de Cohen
+├── Metricas/                                   # Tensores STFT (.npy) - excluidos por .gitignore
 ├── Modelos/
-│   └── Modelos_ETL1/              # Parte 1: EDA y modelos Random Forest, XGBoost, MLP Red Neuronal
-│       ├── Modelo_EDA_ETL1.ipynb
-│       ├── Modelo1_ETL1.ipynb
-│       ├── Modelo2_ETL1.ipynb
-│       ├── Modelo3_ETL1.ipynb
-│       └── Modelo4_ETL1.ipynb
-├── Modelos_CNN/                   # Parte 2: modelos CNN
-│   ├── Modelo2.ipynb
-│   ├── Modelo2_1.ipynb
-│   ├── Modelo2_1_Balanceado.ipynb
-│   ├── Modelo3_Latinoamerica.ipynb
-│   └── (otros notebooks de comparativa y testing)
-├── test_voces/                    # Grabaciones propias para evaluación en condiciones reales
-├── Graficos/                      # Gráficos generados por los modelos
-└── Conclusiones/                  # Notas y conclusiones finales
+│   ├── Modelos_ETL1/                           # Parte 1: EDA y modelos Random Forest, XGBoost, MLP
+│   │   ├── Modelo_EDA_ETL1.ipynb               # Análisis exploratorio y undersampling estratificado
+│   │   ├── Modelo1_ETL1.ipynb                  # XGBoost optimizado con 34 features
+│   │   ├── Modelo2_ETL1.ipynb                  # Reducción de features por Permutation Importance
+│   │   ├── Modelo3_ETL1.ipynb                  # Validación estructural por tipo de ataque
+│   │   ├── Modelo4_ETL1.ipynb                  # Leave-One-Group-Out Cross Validation (LOGOCV)
+│   │   └── config_modelo_final.json            # Configuración del modelo final serializado
+│   ├── Modelos_ETL2/
+│   │   ├── Generación/                         # Generación y comparativa de arquitecturas CNN
+│   │   │   ├── SpatialCNN_2x4_Flatten.ipynb    # Primera CNN espacial (pooling 2x4, cabeza Flatten)
+│   │   │   ├── SpatialCNN_1x8_Flatten.ipynb    # CNN espacial con pooling 1x8
+│   │   │   ├── SpatialCNN_1x8_Flatten_CrossValid.ipynb  # LOAO cross-validation por tipo de ataque
+│   │   │   ├── ETL2_Comparativa_Flatten_vs_GAP.ipynb    # Modelo 2.3: pooling vs cabeza GAP
+│   │   │   └── ETL2_Comparativa_Arquitecturas.ipynb     # Modelo 2.2: comparativa A/B/C arquitecturas
+│   │   └── Analisis_&_Comparativa/             # Análisis de resultados, testing y ETL adicional
+│   │       ├── Modelo2.1_ETL2.ipynb
+│   │       ├── Modelo3_Testing_Voces_Equipo.ipynb
+│   │       └── ETL_V3.ipynb
+│   ├── Modelo2.1_ETL2.ipynb                    # CNN SpatialCNN - entrenamiento principal
+│   ├── Modelo2.1_ETL2_ASVyLatin.ipynb          # CNN entrenada con ASVspoof + Latinoamérica
+│   ├── Modelo2.1_ETL2_Testing_Voces_Equipo.ipynb
+│   ├── Modelo2_ETL2_TestingLiliana.ipynb
+│   ├── Modelo2.1_Alexis.ipynb
+│   ├── Modelo2.2_Alexis.ipynb
+│   ├── Modelo 2.2_Alexis_Comparativa.ipynb
+│   ├── Modelo3_Testing_Voces_Equipo.ipynb
+│   └── ETL_V3.ipynb                            # ETL adicional para nuevos datasets
+├── Graficos/                                   # Gráficos generados por los modelos
+│   ├── Modelo1_ETL1/
+│   ├── Modelo2_ETL1/
+│   ├── Modelo3_ETL1/
+│   ├── Modelo4_ETL1/
+│   ├── ModeloEDA_ETL1/
+│   └── EDA_ETLV2/
+├── test_voces/                                 # Grabaciones reales del equipo (Daniele, Liliana, Alexis)
+│   └── (.m4a / .wav / .mp3 — excluidos por .gitignore)
+├── Conclusiones/                               # Análisis de errores y demo del sistema
+│   ├── Demo.ipynb
+│   └── Razonamiento_Errores_Modelo.ipynb
+├── README_PARTE1.md
+├── README_PARTE2.md
+└── Notas sobre el dataset.md
 ```
 
-> Los archivos de audio y los tensores `.npy` de gran tamaño están excluidos del repositorio por `.gitignore`.
+> Los archivos de audio (`.m4a`, `.wav`, `.mp3`, `.flac`) y los tensores `.npy` de gran tamaño están excluidos del repositorio por `.gitignore`.
 
 ## 5. Instalación y Requisitos
 
@@ -119,9 +123,11 @@ pip install -r requirements.txt
 
 ## 6. Integrantes del Equipo
 
-- Daniele Giovannini
-- Liliana Espinoza Proa
-- Alexis Mamais Mazzucco
+Este proyecto ha sido realizado por:
+
+- **Daniele Giovannini**
+- **Liliana Espinoza Proa**
+- **Alexis Mamais Mazzucco**
 
 ## 7. Agradecimientos
 
@@ -213,6 +219,3 @@ La STD de 0.27 refleja que el modelo detecta bien ataques acústicamente similar
 
 **Evaluación sobre grabaciones propias (test_voces):** de 31 grabaciones reales hechas con dispositivos heterogéneos (iPhone, WhatsApp, ordenadores), solo 10 se clasificaron correctamente como bonafide. El mismatch de dominio entre el entorno controlado del ASVspoof 2019 y grabaciones reales con ruido ambiental explica el bajo rendimiento.
 
-
-# PARTE 2: ETL 2 e implementación de modelos
->>>>>>> d371ecffc325d0d7243eca2f5e6daa5806b6d026

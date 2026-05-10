@@ -8,7 +8,7 @@ El primer trabajo fue entender bien el dataset y su protocolo: qué significaba 
 
 ## Primera aproximación: ETL V1 (agregación por audio)
 
-En la primera versión de extracción de métricas (`obtencion_metricas_V1`) seguimos una estrategia clásica: extraer muchas métricas por ventanas y, para consolidar una sola fila por archivo, calcular:
+En la primera versión de extracción de métricas (`Obtencion_Metricas/ETL_V1.ipynb`) seguimos una estrategia clásica: extraer muchas métricas por ventanas y, para consolidar una sola fila por archivo, calcular:
 
 - media de cada métrica
 - desviación estándar de cada métrica
@@ -33,7 +33,7 @@ En otras palabras, V1 fue una buena base para arrancar, pero no capturaba bien e
 
 ## Giro estratégico: ETL V2
 
-A partir de ese hallazgo, cambiamos el enfoque en `ETL_V2`: pasar de una representación global resumida a una representación local estructurada.
+A partir de ese hallazgo, cambiamos el enfoque en `Obtencion_Metricas/ETL_V2.ipynb`: pasar de una representación global resumida a una representación local estructurada.
 
 ### Decisión técnica central
 
@@ -54,9 +54,9 @@ En ETL V2 también tomamos decisiones de ingeniería para evitar sesgos y ganar 
 - **Pipeline tolerante a errores** (archivos corruptos/faltantes) y procesamiento escalable para no frenar la ETL completa.
 - **Etiquetado binario consistente** (`0=bonafide`, `1=spoof`) para compatibilidad directa con entrenamiento.
 
-## Etapa de Modelos Alexis: iteración y contraste de hipótesis
+## Etapa de Modelos CNN (Parte 2): iteración y contraste de hipótesis
 
-Con ETL V2 empezamos a iterar diferentes modelos en los notebooks de Alexis (`Modelo2_Alexis`, `Modelo2.1_Alexis`, `Modelo2.2_Alexis`, `Modelo 2.2_Alexis_Comparativa`).
+Con ETL V2 empezamos a iterar diferentes modelos (`Modelos/Modelos_ETL2/Generación/SpatialCNN_2x4_Flatten.ipynb`, `Modelos/Modelos_ETL2/Generación/ETL2_Comparativa_Flatten_vs_GAP.ipynb`, `Modelos/Modelos_ETL2/Generación/ETL2_Comparativa_Arquitecturas.ipynb`).
 
 La lógica no fue buscar una única arquitectura "mágica", sino comparar hipótesis y aprender de cada comportamiento.
 
@@ -78,7 +78,7 @@ Por eso, en lugar de aplanar los datos y perder topología acústica, priorizamo
 
 ## Las 3 arquitecturas comparadas (definición + validez)
 
-En `Modelo 2.2_Alexis_Comparativa` cerramos la comparativa con tres hipótesis complementarias:
+En `Modelos/Modelos_ETL2/Generación/ETL2_Comparativa_Arquitecturas.ipynb` cerramos la comparativa con tres hipótesis complementarias:
 
 Antes de cerrar esa versión, también fuimos afinando **hiperparámetros estructurales de CNN** (no solo capas densas o regularización), especialmente:
 
@@ -145,7 +145,7 @@ Este punto fue clave para presentar resultados sin sobreoptimismo: no solo mirar
 
 ## Comprobación específica por `attack_id`
 
-Para validar robustez real frente a tipos de ataque, se incorporó una comprobación específica en `Modelo2.2_Alexis_CrossValidatoin1-6` basada en **Leave-One-Attack-Out (LOAO)**:
+Para validar robustez real frente a tipos de ataque, se incorporó una comprobación específica en `Modelos/Modelos_ETL2/Generación/SpatialCNN_1x8_Flatten_CrossValid.ipynb` basada en **Leave-One-Attack-Out (LOAO)**:
 
 - en cada fold se deja fuera un `attack_id` completo para test
 - se entrena con el resto de `attack_id` spoof
