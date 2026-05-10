@@ -130,6 +130,7 @@ La comparación se hizo con protocolo homogéneo para que fuera justa:
 - validación común en `dev`
 - calibración de umbral por modelo en `dev` maximizando F1 de `spoof`
 - evaluación final en `eval` sin recalibrar (para medir generalización real)
+- evaluación en audios grabados con nuestros telefonos y computadoras
 
 Además, se mantuvo batería de métricas robustas para desbalance (`balanced_accuracy`, `F1_spoof`, `ROC-AUC`, `PR-AUC`, matrices de confusión y métricas de error probabilístico).
 
@@ -176,6 +177,7 @@ el rendimiento no dependía solo de "qué arquitectura" elegíamos, sino tambié
 **Decisiones:**
 
 - dejar de evaluar solo con accuracy
+- aplicar class weight y data augmentation
 - incorporar métricas más informativas: AUC, F1, precision, recall, balanced accuracy
 - en versiones posteriores, cuidar explícitamente la evaluación por clase objetivo (spoof)
 
