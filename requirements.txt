@@ -1,0 +1,11 @@
+librosa
+numpy
+pandas
+scikit-learn
+xgboost
+tensorflow
+matplotlib
+seaborn
+joblib
+tqdm
+ffmpeg-python
