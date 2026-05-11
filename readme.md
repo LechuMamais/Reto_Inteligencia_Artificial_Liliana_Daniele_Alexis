@@ -92,8 +92,8 @@ F1-Score y matriz de confusión (Recall y Precision) como métricas principales.
 ├── Conclusiones/                               # Análisis de errores y demo del sistema
 │   ├── Demo.ipynb
 │   └── Razonamiento_Errores_Modelo.ipynb
-├── README_PARTE1.md
-├── README_PARTE2.md
+├── readme.md
+├── requirements.txt
 └── Notas sobre el dataset.md
 ```
 
