@@ -231,7 +231,7 @@ Esto afectaba directamente al problema de negocio:
 
 En otras palabras, V1 fue una buena base para arrancar, pero no capturaba bien eventos acústicos localizados.
 
-## Giro estratégico: ETL V2
+# Giro estratégico: ETL V2
 
 A partir de ese hallazgo, cambiamos el enfoque en `Obtencion_Metricas/ETL_V2.ipynb`: pasar de una representación global resumida a una representación local estructurada.
 
@@ -378,7 +378,7 @@ el rendimiento no dependía solo de "qué arquitectura" elegíamos, sino tambié
 
 - dejar de evaluar solo con accuracy
 - aplicar class weight y data augmentation
-- incorporar métricas más informativas: AUC, F1, precision, recall, balanced accuracy
+- incorporar métricas más informativas: AUC, F1, precision, recall, balanced accuracy, matriz de confusión.
 - en versiones posteriores, cuidar explícitamente la evaluación por clase objetivo (spoof)
 
 ### 2) Sobreajuste durante entrenamiento
@@ -428,13 +428,66 @@ Esto evita sobreprometer resultados y deja una base reproducible para siguientes
 
 ## Lecciones aprendidas
 
-- Más métricas no es complejidad innecesaria: es protección contra el autoengaño experimental.
 - Una validación buena no garantiza rendimiento en escenarios nuevos.
 - La calidad de la ETL define el techo del modelo tanto como la arquitectura.
-- Medir, comparar y documentar decisiones fue tan importante como entrenar redes.
+- Medir, comparar y documentar decisiones fue tan importante como entrenar modelos.
 
-## Próximos pasos sugeridos
+## Comparativa de Arquitecturas Spatial CNN para Detección de Spoofing: Flatten vs GAP
 
-- Consolidar la comparativa A/B/C con el mismo protocolo de evaluación en todas las corridas.
-- Analizar con más detalle casos de error en audios reales del equipo.
-- Explorar ajustes finos de muestreo en ETL V2 para robustez cross-domain.
+Este documento detalla el análisis comparativo de cuatro arquitecturas de redes neuronales convolucionales espaciales (Spatial CNN) diseñadas para la detección de ataques de spoofing.
+
+El experimento evalúa el impacto de dos componentes estructurales clave de los modelos:
+1. **Tamaño de Pooling** en las capas `MaxPooling2D`: `(1, 8)` vs. `(2, 4)`.
+2. **Tipo de Cabeza (Head)**: `Flatten + Dense` vs. `GlobalAveragePooling2D` (GAP).
+
+### Modelos Evaluados
+
+* `SpatialCNN_pool_1x8_flatten`
+* `SpatialCNN_pool_1x8_gap`
+* `SpatialCNN_pool_2x4_flatten`
+* `SpatialCNN_pool_2x4_gap`
+
+### Resultados de Evaluación (Conjunto `eval`)
+
+A continuación se resumen las métricas clave obtenidas en el conjunto de evaluación final.
+
+| Arquitectura del Modelo | Balanced Accuracy | F1_spoof | MCC |
+| :--- | :---: | :---: | :---: |
+| **`SpatialCNN_pool_1x8_flatten`** | **0.8765** | **0.8823** | **0.5077** |
+| `SpatialCNN_pool_1x8_gap` | 0.8364 | 0.8356 | 0.4298 |
+| `SpatialCNN_pool_2x4_flatten` | 0.7821 | 0.8631 | 0.3823 |
+| `SpatialCNN_pool_2x4_gap` | 0.7709 | 0.8778 | 0.3807 |
+
+### Análisis por Componentes
+
+### 1. Flatten vs. Global Average Pooling (GAP)
+Las arquitecturas que implementan una cabeza de tipo `Flatten` muestran un rendimiento sustancialmente superior en comparación con `GAP`.
+* **Promedio Balanced Accuracy (Flatten):** 0.8293
+* **Promedio Balanced Accuracy (GAP):** 0.8036
+
+### 2. Pooling Asimétrico (1x8 vs. 2x4)
+La estructura de pooling asimétrica `(1, 8)` resulta considerablemente más eficaz para la extracción de características en este contexto específico que la dimensión de `(2, 4)`.
+* **Promedio Balanced Accuracy (1x8):** 0.8564
+* **Promedio Balanced Accuracy (2x4):** 0.7765
+
+### Conclusión
+
+Evaluando las tres métricas fundamentales (`balanced_accuracy`, `MCC` y `F1_spoof`), los resultados son consistentes a través de las diferentes pruebas. 
+
+El modelo **`SpatialCNN_pool_1x8_flatten`** se consolida como la arquitectura más robusta y de mejor rendimiento de las cuatro. Consigue los valores más altos tanto en el conjunto de validación (`dev` - Balanced Accuracy de 0.9088) como en el de evaluación (`eval`), por lo que representa el mejor compromiso entre el tamaño de pooling y el tipo de cabeza para esta tarea.
+
+
+## Próximos pasos
+
+### Mejoras en la ETL_2:
+Incluir VAD: Uno de los problemas que hemos detectado en la ETL_2 es que contiene momentos de silencio: al capturar una instantánea tan pequeña del total del audio, es probable que haya muestras que no contengan voz, por que el locutor / atacante estaba haciendo una pausa en ese momento. La solución propuesta es incorporar un mecanismo de Voice Activity Detection (VAD) e incluir en el dataset sólo muestras en donde el algoritmo haya detectado voz humana. Con esta incorporación, podríamos iterar cambiando el momento del audio en donde tomamos la instantanea para asegurarnos que contenga información relevante. Esto nos quitaría la necesidad de obtener muestras en diferentes momentos del audio, pudiendo avanzar hacia un algoritmo que analice fracciones más pequeñas de audio.
+Contrastar contra Escala de Frecuencias Mel: Crear una nueva versión que utilice la escala de Frecuencias de Mel en lugar de la escala de frecuencias lineal en Hz. Contrastar los resultados del uso de una u otra escala de frecuencias para seleccionar la que dé mejores resultados.
+
+### Testeo de otras arquitecturas:
+El objetivo es encontrar un algoritmo capaz de detectar audios reales o fake con sólo una fracción de segundo. En este sentido lo siguiente que haríamos luego de incorporar el algoritmo de VAD en la ETL, es reducir el tamaño de las muestras para testear la pipeline con 4, 3, 2 y 1 muestra. Esto nos daría una idea del “Plateau” donde la cantidad de muestras es óptima. Evaluar la posibilidad de aumentar la cantidad de muestras, si hay signos de que el Plateau esté a la derecha. Para testear con muestras más pequeñas, probaríamos con arquitecturas CNN que ya hemos hecho como Pooling Vertical, o Convolución 2D. Otras arquitecturas también podrían entrar en consideración, sobre todo para el caso de 1 muestra en donde la convolución podría no tener sentido.
+Lo siguiente sería generar un dataset donde las muestras de audio sean continuadas, en lugar de espaciadas en el tiempo (también utilizando VAD). Luego entrenaríamos la pipeline con conjuntos de datos de diferentes longitudes de muestra, con el objetivo de establecer el número mínimo con el que el algoritmo es capaz de dar buenos resultados. 
+Contrastando estas dos propuestas, creemos que nos encontraríamos más cerca de encontrar un algoritmo que sea capaz de clasificar un audio analizando sólo una fracción de segundo.
+
+### Otras mejoras:
+
+Aumentar la cantidad de datos audio Bonafide, obteniendo muestras reales de diferentes fuentes de internet.
